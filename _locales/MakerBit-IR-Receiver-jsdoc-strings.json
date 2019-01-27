@@ -1,0 +1,20 @@
+{
+  "makerbit": "MakerBit",
+  "makerbit.connectInfrared": "Connects to the IR receiver module at the specified pin.",
+  "makerbit.connectInfrared|param|pin": "IR receiver pin, eg: DigitalPin.P0",
+  "makerbit.irButton": "Turns an IR button into its corresponding command code.",
+  "makerbit.irButton|param|button": "the button",
+  "makerbit.irCommandCode": "Returns the command code of the button that is currently pressed and 0 if no button is pressed.",
+  "makerbit.isIrButtonPressed": "Returns true if a specific remote button is currently pressed. False otherwise.",
+  "makerbit.isIrButtonPressed|param|button": "the button to be checked",
+  "makerbit.onIrButtonPressed": "Do something when a specific button is pressed on the remote control.",
+  "makerbit.onIrButtonPressed|param|button": "the button to be checked",
+  "makerbit.onIrButtonPressed|param|handler": "body code to run when event is raised",
+  "makerbit.onIrButtonReleased": "Do something when a specific button is released on the remote control.",
+  "makerbit.onIrButtonReleased|param|button": "the button to be checked",
+  "makerbit.onIrButtonReleased|param|handler": "body code to run when event is raised",
+  "makerbit.onIrCommandExpired": "Do something when an IR command is expired.",
+  "makerbit.onIrCommandExpired|param|handler": "body code to run when event is raised",
+  "makerbit.onIrCommandReceived": "Do something when an IR command is received.",
+  "makerbit.onIrCommandReceived|param|handler": "body code to run when event is raised"
+}
