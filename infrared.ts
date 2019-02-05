@@ -182,7 +182,7 @@ namespace makerbit {
   //% blockId="makerbit_infrared_connect"
   //% block="connect IR receiver at %pin"
   //% pin.fieldEditor="gridpicker"
-  //% pin.fieldOptions.columns=3
+  //% pin.fieldOptions.columns=4
   //% pin.fieldOptions.tooltips="false"
   //% weight=90
   export function connectInfrared(pin: DigitalPin): void {
