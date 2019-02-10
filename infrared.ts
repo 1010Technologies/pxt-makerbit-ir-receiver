@@ -63,12 +63,12 @@ namespace makerbit {
 
   class NecIr {
     state: NecIrState;
-    bitsReceived: number;
-    commandBits: number;
-    inverseCommandBits: number;
-    frequentlyUsedCommands: number[];
+    bitsReceived: uint8;
+    commandBits: uint8;
+    inverseCommandBits: uint8;
+    frequentlyUsedCommands: uint8[];
 
-    constructor(frequentlyUsedCommands: number[]) {
+    constructor(frequentlyUsedCommands: uint8[]) {
       this.reset();
       this.frequentlyUsedCommands = frequentlyUsedCommands;
     }
