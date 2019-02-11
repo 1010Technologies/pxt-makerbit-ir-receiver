@@ -1,19 +1,17 @@
 {
-    "name": "MakerBit-IR-Receiver",
-    "version": "0.0.3",
-    "description": "MPR121 capacitive touch sensor module for MakerBit",
-    "license": "MIT",
-    "dependencies": {
-        "core": "*"
-    },
-    "files": [
-        "namespace.ts",
-        "README.md",
-        "infrared.ts",
-        "_locales/de/MakerBit-IR-Receiver-strings.json"
-    ],
-    "testFiles": [
-        "test.ts"
-    ],
-    "public": true
+  "name": "MakerBit-IR-Receiver",
+  "version": "0.0.3",
+  "description": "MakeCode extension for Keyestudio Infrared Wireless Module Kit",
+  "license": "MIT",
+  "dependencies": {
+    "core": "*"
+  },
+  "files": [
+    "namespace.ts",
+    "README.md",
+    "infrared.ts",
+    "_locales/de/MakerBit-IR-Receiver-strings.json"
+  ],
+  "testFiles": ["test.ts"],
+  "public": true
 }

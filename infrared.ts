@@ -1,4 +1,5 @@
-// MakerBit blocks supporting a keyestudio Infrared Wireless Remote Control
+// MakerBit blocks supporting a Keyestudio Infrared Wireless Module Kit
+// (receiver module+remote controller)
 
 const enum IrButton {
   //% block="  "
