@@ -3,10 +3,8 @@
  */
 
 makerbit.connectInfrared(DigitalPin.P0);
-makerbit.onIrButtonPressed(IrButton.Ok, () => {});
-makerbit.onIrButtonReleased(IrButton.Up, () => {});
-makerbit.isIrButtonPressed(IrButton.Number_0);
-makerbit.onIrCommandReceived(() => {});
-makerbit.onIrCommandExpired(() => {});
-const command: number = makerbit.irCommandCode();
+makerbit.onIrButton(IrButton.Ok, IrButtonAction.Pressed, () => {});
+makerbit.onIrButton(IrButton.Up, IrButtonAction.Released, () => {});
+const isPressed: boolean = makerbit.isIrButtonPressed(IrButton.Number_0);
+const currentButton: number = makerbit.pressedIrButton();
 const button: number = makerbit.irButton(IrButton.Number_9);

@@ -2,8 +2,8 @@
 // (receiver module+remote controller)
 
 const enum IrButton {
-  //% block="  "
-  Unused_1 = -1,
+  //% block="any"
+  Any = -1,
   //% block="▲"
   Up = 0x62,
   //% block=" "
@@ -44,6 +44,13 @@ const enum IrButton {
   Number_0 = 0x4a,
   //% block="#"
   Hash = 0x52
+}
+
+const enum IrButtonAction {
+  //% block="pressed"
+  Pressed = 0,
+  //% block="released"
+  Released = 1
 }
 
 namespace makerbit {
@@ -276,35 +283,32 @@ namespace makerbit {
   }
 
   /**
-   * Do something when a specific button is pressed on the remote control.
+   * Do something when a specific button is pressed or released on the remote control.
    * @param button the button to be checked
    * @param handler body code to run when event is raised
    */
   //% subcategory="IR Remote"
-  //% blockId=makerbit_infrared_on_ir_button_pressed
-  //% block="on IR button | %button pressed"
+  //% blockId=makerbit_infrared_on_ir_button
+  //% block="on IR button | %button | %action"
   //% button.fieldEditor="gridpicker"
   //% button.fieldOptions.columns=3
   //% button.fieldOptions.tooltips="false"
   //% weight=69
-  export function onIrButtonPressed(button: IrButton, handler: () => void) {
-    control.onEvent(MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID, button, handler);
-  }
-
-  /**
-   * Do something when a specific button is released on the remote control.
-   * @param button the button to be checked
-   * @param handler body code to run when event is raised
-   */
-  //% subcategory="IR Remote"
-  //% blockId=makerbit_infrared_on_ir_button_released
-  //% block="on IR button | %button released"
-  //% button.fieldEditor="gridpicker"
-  //% button.fieldOptions.columns=3
-  //% button.fieldOptions.tooltips="false"
-  //% weight=68
-  export function onIrButtonReleased(button: IrButton, handler: () => void) {
-    control.onEvent(MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID, button, handler);
+  export function onIrButton(
+    button: IrButton,
+    action: IrButtonAction,
+    handler: () => void
+  ) {
+    control.onEvent(
+      action === IrButtonAction.Pressed
+        ? MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID
+        : MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
+      button === IrButton.Any ? EventBusValue.MICROBIT_EVT_ANY : button,
+      () => {
+        irState.activeCommand = control.eventValue();
+        handler();
+      }
+    );
   }
 
   /**
@@ -323,64 +327,18 @@ namespace makerbit {
   }
 
   /**
-   * Do something when an IR command is received.
-   * @param handler body code to run when event is raised
+   * Returns the code of the IR button that is currently pressed and 0 if no button is pressed.
    */
   //% subcategory="IR Remote"
-  //% blockId=makerbit_infrared_on_command
-  //% block="on IR button pressed"
-  //% weight=59
-  export function onIrCommandReceived(handler: () => void) {
-    control.onEvent(
-      MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
-      EventBusValue.MICROBIT_EVT_ANY,
-      () => {
-        setupContextAndNotify(handler);
-      }
-    );
-  }
-
-  /**
-   * Do something when an IR command is expired.
-   * @param handler body code to run when event is raised
-   */
-  //% subcategory="IR Remote"
-  //% blockId=makerbit_infrared_on_command_expired
-  //% block="on IR button released"
-  //% weight=58
-  export function onIrCommandExpired(handler: () => void) {
-    control.onEvent(
-      MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-      EventBusValue.MICROBIT_EVT_ANY,
-      () => {
-        setupContextAndNotify(handler);
-      }
-    );
-  }
-
-  function setupContextAndNotify(handler: () => void) {
-    const previousCommand = irState.activeCommand;
-    const eventValue = control.eventValue();
-    irState.activeCommand = eventValue;
-    handler();
-    if (irState.activeCommand === eventValue) {
-      irState.activeCommand = previousCommand;
-    }
-  }
-
-  /**
-   * Returns the command code of the button that is currently pressed and 0 if no button is pressed.
-   */
-  //% subcategory="IR Remote"
-  //% blockId=makerbit_infrared_command
+  //% blockId=makerbit_infrared_pressed_button
   //% block="IR button"
   //% weight=57
-  export function irCommandCode(): number {
+  export function pressedIrButton(): number {
     return irState.activeCommand;
   }
 
   /**
-   * Turns an IR button into its corresponding command code.
+   * Returns the command code of a specific IR button.
    * @param button the button
    */
   //% subcategory="IR Remote"
