@@ -167,11 +167,13 @@ namespace makerbit {
   }
 
   function enableIrMarkSpaceDetection(pin: DigitalPin) {
+    pins.setPull(pin, PinPullMode.PullNone);
+
     let mark = 0;
     let space = 0;
 
     pins.onPulsed(pin, PulseValue.Low, () => {
-      // HIGH
+      // HIGH, see https://github.com/microsoft/pxt-microbit/issues/1416
       mark = pins.pulseDuration();
     });
 
