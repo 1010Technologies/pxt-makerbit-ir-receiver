@@ -43,14 +43,14 @@ const enum IrButton {
   //% block="0"
   Number_0 = 0x4a,
   //% block="#"
-  Hash = 0x52
+  Hash = 0x52,
 }
 
 const enum IrButtonAction {
   //% block="pressed"
   Pressed = 0,
   //% block="released"
-  Released = 1
+  Released = 1,
 }
 
 namespace makerbit {
@@ -66,7 +66,7 @@ namespace makerbit {
 
   enum NecIrState {
     DetectStartOrRepeat,
-    DetectBits
+    DetectBits,
   }
 
   class NecIr {
@@ -171,16 +171,20 @@ namespace makerbit {
 
     let mark = 0;
     let space = 0;
+    let oneOnly = false;
 
-    pins.onPulsed(pin, PulseValue.Low, () => {
+    pins.onPulsed(pin, PulseValue.High, () => {
       // HIGH, see https://github.com/microsoft/pxt-microbit/issues/1416
       mark = pins.pulseDuration();
     });
 
-    pins.onPulsed(pin, PulseValue.High, () => {
+    pins.onPulsed(pin, PulseValue.Low, () => {
       // LOW
       space = pins.pulseDuration();
-      control.raiseEvent(MICROBIT_MAKERBIT_IR_MARK_SPACE, mark + space);
+      if (!oneOnly) {
+        oneOnly = true;
+        control.raiseEvent(MICROBIT_MAKERBIT_IR_MARK_SPACE, mark + space);
+      }
     });
   }
 
@@ -188,7 +192,7 @@ namespace makerbit {
    * Connects to the IR receiver module at the specified pin.
    * @param pin IR receiver pin, eg: DigitalPin.P0
    */
-  //% subcategory="IR Remote"
+  //% subcategory="IR Receiver"
   //% blockId="makerbit_infrared_connect"
   //% block="connect IR receiver at %pin"
   //% pin.fieldEditor="gridpicker"
@@ -215,9 +219,9 @@ namespace makerbit {
           0x5a,
           0x42,
           0x4a,
-          0x52
+          0x52,
         ]),
-        activeCommand: 0
+        activeCommand: 0,
       };
 
       enableIrMarkSpaceDetection(pin);
@@ -225,11 +229,14 @@ namespace makerbit {
       let activeCommand = 0;
       let repeatTimeout = 0;
       const REPEAT_TIMEOUT_MS = 120;
+      let count = 0;
 
       control.onEvent(
         MICROBIT_MAKERBIT_IR_MARK_SPACE,
         EventBusValue.MICROBIT_EVT_ANY,
         () => {
+          count += 1;
+          makerbit.showStringOnLcd2004("" + count, 40, 20);
           const newCommand = irState.necIr.pushMarkSpace(control.eventValue());
 
           if (newCommand === 256) {
@@ -289,7 +296,7 @@ namespace makerbit {
    * @param button the button to be checked
    * @param handler body code to run when event is raised
    */
-  //% subcategory="IR Remote"
+  //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_on_ir_button
   //% block="on IR button | %button | %action"
   //% button.fieldEditor="gridpicker"
@@ -317,7 +324,7 @@ namespace makerbit {
    * Returns true if a specific remote button is currently pressed. False otherwise.
    * @param button the button to be checked
    */
-  //% subcategory="IR Remote"
+  //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_button_pressed
   //% block="IR button | %button | is pressed"
   //% button.fieldEditor="gridpicker"
@@ -331,7 +338,7 @@ namespace makerbit {
   /**
    * Returns the code of the IR button that is currently pressed and 0 if no button is pressed.
    */
-  //% subcategory="IR Remote"
+  //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_pressed_button
   //% block="IR button"
   //% weight=57
@@ -343,7 +350,7 @@ namespace makerbit {
    * Returns the command code of a specific IR button.
    * @param button the button
    */
-  //% subcategory="IR Remote"
+  //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_button
   //% button.fieldEditor="gridpicker"
   //% button.fieldOptions.columns=3
