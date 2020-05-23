@@ -171,20 +171,16 @@ namespace makerbit {
 
     let mark = 0;
     let space = 0;
-    let oneOnly = false;
 
-    pins.onPulsed(pin, PulseValue.High, () => {
+    pins.onPulsed(pin, PulseValue.Low, () => {
       // HIGH, see https://github.com/microsoft/pxt-microbit/issues/1416
       mark = pins.pulseDuration();
     });
 
-    pins.onPulsed(pin, PulseValue.Low, () => {
+    pins.onPulsed(pin, PulseValue.High, () => {
       // LOW
       space = pins.pulseDuration();
-      if (!oneOnly) {
-        oneOnly = true;
-        control.raiseEvent(MICROBIT_MAKERBIT_IR_MARK_SPACE, mark + space);
-      }
+      control.raiseEvent(MICROBIT_MAKERBIT_IR_MARK_SPACE, mark + space);
     });
   }
 
@@ -229,14 +225,11 @@ namespace makerbit {
       let activeCommand = 0;
       let repeatTimeout = 0;
       const REPEAT_TIMEOUT_MS = 120;
-      let count = 0;
 
       control.onEvent(
         MICROBIT_MAKERBIT_IR_MARK_SPACE,
         EventBusValue.MICROBIT_EVT_ANY,
         () => {
-          count += 1;
-          makerbit.showStringOnLcd2004("" + count, 40, 20);
           const newCommand = irState.necIr.pushMarkSpace(control.eventValue());
 
           if (newCommand === 256) {
