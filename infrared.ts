@@ -55,13 +55,15 @@ const enum IrButtonAction {
 
 namespace makerbit {
   let irState: IrState;
+
   const MICROBIT_MAKERBIT_IR_MARK_SPACE = 777;
   const MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID = 789;
   const MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID = 790;
 
   interface IrState {
     necIr: NecIr;
-    activeCommand: number;
+    command: number;
+    hasNewCommand: boolean;
   }
 
   enum NecIrState {
@@ -75,6 +77,9 @@ namespace makerbit {
     commandBits: uint8;
     inverseCommandBits: uint8;
     frequentlyUsedCommands: uint8[];
+
+    static readonly REPEAT: number = -5;
+    static readonly DETECTION_IN_PROGRESS = -23;
 
     constructor(frequentlyUsedCommands: uint8[]) {
       this.reset();
@@ -90,15 +95,15 @@ namespace makerbit {
 
     detectStartOrRepeat(pulseToPulse: number): number {
       if (pulseToPulse < 10000) {
-        return 0;
+        return NecIr.DETECTION_IN_PROGRESS;
       } else if (pulseToPulse < 12500) {
         this.state = NecIrState.DetectStartOrRepeat;
-        return 256;
+        return NecIr.REPEAT;
       } else if (pulseToPulse < 14500) {
         this.state = NecIrState.DetectBits;
-        return 0;
+        return NecIr.DETECTION_IN_PROGRESS;
       } else {
-        return 0;
+        return NecIr.DETECTION_IN_PROGRESS;
       }
     }
 
@@ -130,15 +135,18 @@ namespace makerbit {
         this.inverseCommandBits = (this.inverseCommandBits << 1) + bit;
       } else if (this.bitsReceived === 32) {
         this.inverseCommandBits = (this.inverseCommandBits << 1) + bit;
-        const command = NecIr.calculateCommand(
+        let command = NecIr.calculateCommand(
           this.commandBits,
           this.inverseCommandBits,
           this.frequentlyUsedCommands
         );
         this.reset();
-        return command;
+        if (command >= 0) {
+          return command;
+        }
       }
-      return 0;
+
+      return NecIr.DETECTION_IN_PROGRESS;
     }
 
     detectBit(pulseToPulse: number): number {
@@ -150,18 +158,15 @@ namespace makerbit {
         return this.pushBit(1);
       } else {
         this.reset();
-        return -1;
+        return NecIr.DETECTION_IN_PROGRESS;
       }
     }
 
     pushMarkSpace(markAndSpace: number): number {
-      switch (this.state) {
-        case NecIrState.DetectStartOrRepeat:
-          return this.detectStartOrRepeat(markAndSpace);
-        case NecIrState.DetectBits:
-          return this.detectBit(markAndSpace);
-        default:
-          return 0;
+      if (this.state === NecIrState.DetectStartOrRepeat) {
+        return this.detectStartOrRepeat(markAndSpace);
+      } else {
+        return this.detectBit(markAndSpace);
       }
     }
   }
@@ -217,12 +222,13 @@ namespace makerbit {
           0x4a,
           0x52,
         ]),
-        activeCommand: 0,
+        command: IrButton.Any,
+        hasNewCommand: false,
       };
 
       enableIrMarkSpaceDetection(pin);
 
-      let activeCommand = 0;
+      let activeCommand = -1;
       let repeatTimeout = 0;
       const REPEAT_TIMEOUT_MS = 120;
 
@@ -232,10 +238,12 @@ namespace makerbit {
         () => {
           const newCommand = irState.necIr.pushMarkSpace(control.eventValue());
 
-          if (newCommand === 256) {
+          if (newCommand === NecIr.DETECTION_IN_PROGRESS) {
+            // do nothing
+          } else if (newCommand === NecIr.REPEAT) {
             repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
-          } else if (newCommand > 0 && newCommand !== activeCommand) {
-            if (activeCommand !== 0) {
+          } else if (newCommand >= 0 && newCommand !== activeCommand) {
+            if (activeCommand >= 0) {
               control.raiseEvent(
                 MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
                 activeCommand
@@ -243,38 +251,31 @@ namespace makerbit {
             }
 
             repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
-            irState.activeCommand = newCommand;
+            irState.hasNewCommand = true;
+            irState.command = newCommand;
             activeCommand = newCommand;
             control.raiseEvent(
               MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
               newCommand
             );
-          } else if (newCommand < 0 && activeCommand !== 0) {
-            // Failed to decode command
-            irState.activeCommand = 0;
-            control.raiseEvent(
-              MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-              activeCommand
-            );
-            activeCommand = 0;
           }
         }
       );
 
       control.inBackground(() => {
         while (true) {
-          if (activeCommand === 0) {
+          if (activeCommand < 0) {
+            // sleep to save CPU cylces
             basic.pause(REPEAT_TIMEOUT_MS);
           } else {
             const now = input.runningTime();
             if (now > repeatTimeout) {
               // repeat timeout
-              irState.activeCommand = 0;
               control.raiseEvent(
                 MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
                 activeCommand
               );
-              activeCommand = 0;
+              activeCommand = -1;
             } else {
               basic.pause(repeatTimeout - now + 2);
             }
@@ -307,36 +308,37 @@ namespace makerbit {
         : MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
       button === IrButton.Any ? EventBusValue.MICROBIT_EVT_ANY : button,
       () => {
-        irState.activeCommand = control.eventValue();
+        irState.command = control.eventValue();
         handler();
       }
     );
   }
 
   /**
-   * Returns true if a specific remote button is currently pressed. False otherwise.
-   * @param button the button to be checked
-   */
-  //% subcategory="IR Receiver"
-  //% blockId=makerbit_infrared_button_pressed
-  //% block="IR button | %button | is pressed"
-  //% button.fieldEditor="gridpicker"
-  //% button.fieldOptions.columns=3
-  //% button.fieldOptions.tooltips="false"
-  //% weight=67
-  export function isIrButtonPressed(button: IrButton): boolean {
-    return irState.activeCommand === button;
-  }
-
-  /**
-   * Returns the code of the IR button that is currently pressed and 0 if no button is pressed.
+   * Returns the code of the IR button that was pressed last. Returns -1 (IrButton.Any) if no button has been pressed yet.
    */
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_pressed_button
   //% block="IR button"
-  //% weight=57
+  //% weight=67
   export function pressedIrButton(): number {
-    return irState.activeCommand;
+    return irState.command;
+  }
+
+  /**
+   * Returns true if any button was pressed since the last call of this function. False otherwise.
+   */
+  //% subcategory="IR Receiver"
+  //% blockId=makerbit_infrared_was_any_button_pressed
+  //% block="IR button | %button | was pressed"
+  //% weight=57
+  export function wasAnyIrButtonPressed(): boolean {
+    if (irState.hasNewCommand) {
+      irState.hasNewCommand = false;
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /**
