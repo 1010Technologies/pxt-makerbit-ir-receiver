@@ -1,6 +1,6 @@
 {
     "name": "MakerBit-IR-Receiver",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "description": "MakeCode extension for Keyestudio Infrared Wireless Module Kit",
     "license": "MIT",
     "dependencies": {
