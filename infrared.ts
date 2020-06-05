@@ -194,13 +194,13 @@ namespace makerbit {
    * @param pin IR receiver pin, eg: DigitalPin.P0
    */
   //% subcategory="IR Receiver"
-  //% blockId="makerbit_infrared_connect"
+  //% blockId="makerbit_infrared_connect_receiver"
   //% block="connect IR receiver at %pin"
   //% pin.fieldEditor="gridpicker"
   //% pin.fieldOptions.columns=4
   //% pin.fieldOptions.tooltips="false"
   //% weight=90
-  export function connectInfrared(pin: DigitalPin): void {
+  export function connectIrReceiver(pin: DigitalPin): void {
     if (irState) {
       return;
     }
