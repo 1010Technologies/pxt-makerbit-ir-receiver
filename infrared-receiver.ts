@@ -53,6 +53,8 @@ const enum IrButtonAction {
   Released = 1,
 }
 
+//% color=#0fbc11 icon="\u272a" block="MakerBit"
+//% category="MakerBit"
 namespace makerbit {
   let irState: IrState;
 
@@ -290,6 +292,7 @@ namespace makerbit {
   /**
    * Do something when a specific button is pressed or released on the remote control.
    * @param button the button to be checked
+   * @param action the trigger action
    * @param handler body code to run when event is raised
    */
   //% subcategory="IR Receiver"
