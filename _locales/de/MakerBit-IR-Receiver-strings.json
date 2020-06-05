@@ -22,11 +22,11 @@
   "IrButton.Up|block": "▲",
   "IrButtonAction.Pressed|block": "gedrückt",
   "IrButtonAction.Released|block": "losgelassen",
-  "makerbit.connectInfrared|block": "verbinde IR Empfänger an %pin",
+  "makerbit.connectIrReceiver|block": "verbinde IR Empfänger an %pin",
   "makerbit.irButton|block": "IR Taste %button",
-  "makerbit.isIrButtonPressed|block": "IR Taste | %button | wird gedrückt",
   "makerbit.onIrButton|block": "wenn IR Taste | %button | %action",
   "makerbit.pressedIrButton|block": "IR Taste",
+  "makerbit.wasAnyIrButtonPressed|block": "beliebige IR Taste wurde gedrückt",
   "makerbit|block": "MakerBit",
   "{id:category}Makerbit": "Makerbit",
   "{id:subcategory}IR Remote": "IR Empfänger"

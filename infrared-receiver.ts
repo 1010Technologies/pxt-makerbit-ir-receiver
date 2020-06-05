@@ -335,7 +335,7 @@ namespace makerbit {
    */
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_was_any_button_pressed
-  //% block="any IR button | %button | was pressed"
+  //% block="any IR button was pressed"
   //% weight=57
   export function wasAnyIrButtonPressed(): boolean {
     if (!irState) {
