@@ -323,10 +323,10 @@ namespace makerbit {
    * Returns the code of the IR button that was pressed last. Returns -1 (IrButton.Any) if no button has been pressed yet.
    */
   //% subcategory="IR Receiver"
-  //% blockId=makerbit_infrared_pressed_button
+  //% blockId=makerbit_infrared_ir_button_pressed
   //% block="IR button"
   //% weight=67
-  export function pressedIrButton(): number {
+  export function irButton(): number {
     if (!irState) {
       return IrButton.Any;
     }
@@ -357,13 +357,13 @@ namespace makerbit {
    * @param button the button
    */
   //% subcategory="IR Receiver"
-  //% blockId=makerbit_infrared_button
+  //% blockId=makerbit_infrared_button_code
   //% button.fieldEditor="gridpicker"
   //% button.fieldOptions.columns=3
   //% button.fieldOptions.tooltips="false"
-  //% block="IR button %button"
+  //% block="IR button code %button"
   //% weight=56
-  export function irButton(button: IrButton): number {
+  export function irButtonCode(button: IrButton): number {
     return button as number;
   }
 }
