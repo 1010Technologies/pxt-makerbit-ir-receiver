@@ -14,6 +14,83 @@ http://makerbit.com/
 | :----------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------: |
 |                                            _MakerBit_                                            |                                   _MakerBit+R with motor controller_                                   |
 
+# Documentation
+
+## makerbit.connectIrLed
+
+Connects to the IR receiver module at the specified pin.
+
+```sig
+makerbit.connectIrReceiver(DigitalPin.P0)
+```
+
+### Parameters
+
+- `pin` - digital pin with an attached IR receiver
+
+## makerbit.onIrButton
+
+Do something when a specific button is pressed or released on the remote control.
+
+```sig
+makerbit.onIrButton(IrButton.Ok, IrButtonAction.Pressed, () => {})
+```
+
+### Parameters
+
+- `button` - the button to be checked
+- `action`- the trigger action
+- `handler` - body code to run when event is raised
+
+## makerbit.wasAnyIrButtonPressed
+
+Returns true if any button was pressed since the last call of this function. False otherwise.
+
+```sig
+makerbit.wasAnyIrButtonPressed();
+```
+
+## makerbit.pressedIrButton
+
+Returns the code of the IR button that was pressed last. Returns -1 (IrButton.Any) if no button has been pressed yet.
+
+```sig
+makerbit.pressedIrButton()
+```
+
+## makerbit.irButton
+
+Returns the command code of a specific IR button.
+
+```sig
+makerbit.irButton(IrButton.Number_9)
+```
+
+### Parameters
+
+- `button` - the button
+
+## MakeCode Example
+
+```blocks
+makerbit.connectIrReceiver(DigitalPin.P0)
+
+makerbit.onIrButton(IrButton.Ok, IrButtonAction.Released, function () {
+    basic.showIcon(IconNames.SmallHeart)
+})
+
+makerbit.onIrButton(IrButton.Ok, IrButtonAction.Pressed, function () {
+    basic.showIcon(IconNames.Heart)
+})
+
+basic.forever(function () {
+    if (makerbit.wasAnyIrButtonPressed()) {
+        basic.showNumber(makerbit.pressedIrButton())
+    }
+})
+
+```
+
 ## License
 
 Licensed under the MIT License (MIT). See LICENSE file for more details.
