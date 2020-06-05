@@ -201,88 +201,90 @@ namespace makerbit {
   //% pin.fieldOptions.tooltips="false"
   //% weight=90
   export function connectInfrared(pin: DigitalPin): void {
-    if (!irState) {
-      irState = {
-        necIr: new NecIr([
-          0x62,
-          0x22,
-          0x02,
-          0xc2,
-          0xa8,
-          0x68,
-          0x98,
-          0xb0,
-          0x30,
-          0x18,
-          0x7a,
-          0x10,
-          0x38,
-          0x5a,
-          0x42,
-          0x4a,
-          0x52,
-        ]),
-        command: IrButton.Any,
-        hasNewCommand: false,
-      };
+    if (irState) {
+      return;
+    }
 
-      enableIrMarkSpaceDetection(pin);
+    irState = {
+      necIr: new NecIr([
+        0x62,
+        0x22,
+        0x02,
+        0xc2,
+        0xa8,
+        0x68,
+        0x98,
+        0xb0,
+        0x30,
+        0x18,
+        0x7a,
+        0x10,
+        0x38,
+        0x5a,
+        0x42,
+        0x4a,
+        0x52,
+      ]),
+      command: IrButton.Any,
+      hasNewCommand: false,
+    };
 
-      let activeCommand = -1;
-      let repeatTimeout = 0;
-      const REPEAT_TIMEOUT_MS = 120;
+    enableIrMarkSpaceDetection(pin);
 
-      control.onEvent(
-        MICROBIT_MAKERBIT_IR_MARK_SPACE,
-        EventBusValue.MICROBIT_EVT_ANY,
-        () => {
-          const newCommand = irState.necIr.pushMarkSpace(control.eventValue());
+    let activeCommand = -1;
+    let repeatTimeout = 0;
+    const REPEAT_TIMEOUT_MS = 120;
 
-          if (newCommand === NecIr.DETECTION_IN_PROGRESS) {
-            // do nothing
-          } else if (newCommand === NecIr.REPEAT) {
-            repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
-          } else if (newCommand >= 0 && newCommand !== activeCommand) {
-            if (activeCommand >= 0) {
-              control.raiseEvent(
-                MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-                activeCommand
-              );
-            }
+    control.onEvent(
+      MICROBIT_MAKERBIT_IR_MARK_SPACE,
+      EventBusValue.MICROBIT_EVT_ANY,
+      () => {
+        const newCommand = irState.necIr.pushMarkSpace(control.eventValue());
 
-            repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
-            irState.hasNewCommand = true;
-            irState.command = newCommand;
-            activeCommand = newCommand;
+        if (newCommand === NecIr.DETECTION_IN_PROGRESS) {
+          // do nothing
+        } else if (newCommand === NecIr.REPEAT) {
+          repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
+        } else if (newCommand >= 0 && newCommand !== activeCommand) {
+          if (activeCommand >= 0) {
             control.raiseEvent(
-              MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
-              newCommand
+              MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
+              activeCommand
             );
           }
-        }
-      );
 
-      control.inBackground(() => {
-        while (true) {
-          if (activeCommand < 0) {
-            // sleep to save CPU cylces
-            basic.pause(REPEAT_TIMEOUT_MS);
+          repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
+          irState.hasNewCommand = true;
+          irState.command = newCommand;
+          activeCommand = newCommand;
+          control.raiseEvent(
+            MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
+            newCommand
+          );
+        }
+      }
+    );
+
+    control.inBackground(() => {
+      while (true) {
+        if (activeCommand < 0) {
+          // sleep to save CPU cylces
+          basic.pause(REPEAT_TIMEOUT_MS);
+        } else {
+          const now = input.runningTime();
+          if (now > repeatTimeout) {
+            // repeat timeout
+            control.raiseEvent(
+              MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
+              activeCommand
+            );
+            activeCommand = -1;
           } else {
-            const now = input.runningTime();
-            if (now > repeatTimeout) {
-              // repeat timeout
-              control.raiseEvent(
-                MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-                activeCommand
-              );
-              activeCommand = -1;
-            } else {
-              basic.pause(repeatTimeout - now + 2);
-            }
+            basic.pause(repeatTimeout - now + 2);
           }
         }
-      });
-    }
+      }
+    });
   }
 
   /**
@@ -322,6 +324,9 @@ namespace makerbit {
   //% block="IR button"
   //% weight=67
   export function pressedIrButton(): number {
+    if (!irState) {
+      return IrButton.Any;
+    }
     return irState.command;
   }
 
@@ -330,9 +335,12 @@ namespace makerbit {
    */
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_was_any_button_pressed
-  //% block="IR button | %button | was pressed"
+  //% block="any IR button | %button | was pressed"
   //% weight=57
   export function wasAnyIrButtonPressed(): boolean {
+    if (!irState) {
+      return false;
+    }
     if (irState.hasNewCommand) {
       irState.hasNewCommand = false;
       return true;
