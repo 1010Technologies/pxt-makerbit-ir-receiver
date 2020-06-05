@@ -1,17 +1,19 @@
 {
-  "name": "MakerBit-IR-Receiver",
-  "version": "1.1.0",
-  "description": "MakeCode extension for Keyestudio Infrared Wireless Module Kit",
-  "license": "MIT",
-  "dependencies": {
-    "core": "*"
-  },
-  "files": [
-    "namespace.ts",
-    "README.md",
-    "infrared-receiver.ts",
-    "_locales/de/MakerBit-IR-Receiver-strings.json"
-  ],
-  "testFiles": ["test.ts"],
-  "public": true
+    "name": "MakerBit-IR-Receiver",
+    "version": "1.2.0",
+    "description": "MakeCode extension for Keyestudio Infrared Wireless Module Kit",
+    "license": "MIT",
+    "dependencies": {
+        "core": "*"
+    },
+    "files": [
+        "namespace.ts",
+        "README.md",
+        "infrared-receiver.ts",
+        "_locales/de/MakerBit-IR-Receiver-strings.json"
+    ],
+    "testFiles": [
+        "test.ts"
+    ],
+    "public": true
 }
