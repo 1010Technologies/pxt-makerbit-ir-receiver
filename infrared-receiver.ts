@@ -58,118 +58,55 @@ const enum IrButtonAction {
 namespace makerbit {
   let irState: IrState;
 
-  const MICROBIT_MAKERBIT_IR_MARK_SPACE = 777;
+  const MICROBIT_MAKERBIT_IR_NEC = 777;
   const MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID = 789;
   const MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID = 790;
+  const IR_REPEAT = 256;
+  const IR_INCOMPLETE = 257;
 
   interface IrState {
-    necIr: NecIr;
     command: number;
     hasNewCommand: boolean;
-  }
-
-  enum NecIrState {
-    DetectStartOrRepeat,
-    DetectBits,
-  }
-
-  class NecIr {
-    state: NecIrState;
     bitsReceived: uint8;
     commandBits: uint8;
-    inverseCommandBits: uint8;
-    frequentlyUsedCommands: uint8[];
+  }
 
-    static readonly REPEAT: number = -5;
-    static readonly DETECTION_IN_PROGRESS = -23;
+  function pushBit(bit: number): number {
+    irState.bitsReceived += 1;
+    if (irState.bitsReceived <= 16) {
+      // ignore all address and inverse address bits
+      return IR_INCOMPLETE;
+    } else if (irState.bitsReceived < 24) {
+      irState.commandBits = (irState.commandBits << 1) + bit;
+      return IR_INCOMPLETE;
+    } else if (irState.bitsReceived === 24) {
+      irState.commandBits = (irState.commandBits << 1) + bit;
+      return irState.commandBits & 0xff;
+    } else {
+      // ignore all inverse command bits
+      return IR_INCOMPLETE;
+    }
+  }
 
-    constructor(frequentlyUsedCommands: uint8[]) {
-      this.reset();
-      this.frequentlyUsedCommands = frequentlyUsedCommands;
+  function detectCommand(markAndSpace: number): number {
+    if (markAndSpace < 1600) {
+      // low bit
+      return pushBit(0);
+    } else if (markAndSpace < 2700) {
+      // high bit
+      return pushBit(1);
     }
 
-    reset() {
-      this.bitsReceived = 0;
-      this.commandBits = 0;
-      this.inverseCommandBits = 0;
-      this.state = NecIrState.DetectStartOrRepeat;
-    }
+    irState.bitsReceived = 0;
 
-    detectStartOrRepeat(pulseToPulse: number): number {
-      if (pulseToPulse < 10000) {
-        return NecIr.DETECTION_IN_PROGRESS;
-      } else if (pulseToPulse < 12500) {
-        this.state = NecIrState.DetectStartOrRepeat;
-        return NecIr.REPEAT;
-      } else if (pulseToPulse < 14500) {
-        this.state = NecIrState.DetectBits;
-        return NecIr.DETECTION_IN_PROGRESS;
-      } else {
-        return NecIr.DETECTION_IN_PROGRESS;
-      }
-    }
-
-    static calculateCommand(
-      commandBits: number,
-      inverseCommandBits: number,
-      frequentlyUsedCommands: number[]
-    ): number {
-      const controlBits = inverseCommandBits ^ 0xff;
-      if (commandBits === controlBits) {
-        return commandBits;
-      } else if (frequentlyUsedCommands.indexOf(commandBits) >= 0) {
-        return commandBits;
-      } else if (frequentlyUsedCommands.indexOf(controlBits) >= 0) {
-        return controlBits;
-      } else {
-        return -1;
-      }
-    }
-
-    pushBit(bit: number): number {
-      this.bitsReceived += 1;
-
-      if (this.bitsReceived <= 16) {
-        // ignore all address bits
-      } else if (this.bitsReceived <= 24) {
-        this.commandBits = (this.commandBits << 1) + bit;
-      } else if (this.bitsReceived < 32) {
-        this.inverseCommandBits = (this.inverseCommandBits << 1) + bit;
-      } else if (this.bitsReceived === 32) {
-        this.inverseCommandBits = (this.inverseCommandBits << 1) + bit;
-        let command = NecIr.calculateCommand(
-          this.commandBits,
-          this.inverseCommandBits,
-          this.frequentlyUsedCommands
-        );
-        this.reset();
-        if (command >= 0) {
-          return command;
-        }
-      }
-
-      return NecIr.DETECTION_IN_PROGRESS;
-    }
-
-    detectBit(pulseToPulse: number): number {
-      if (pulseToPulse < 1600) {
-        // low bit
-        return this.pushBit(0);
-      } else if (pulseToPulse < 2700) {
-        // high bit
-        return this.pushBit(1);
-      } else {
-        this.reset();
-        return NecIr.DETECTION_IN_PROGRESS;
-      }
-    }
-
-    pushMarkSpace(markAndSpace: number): number {
-      if (this.state === NecIrState.DetectStartOrRepeat) {
-        return this.detectStartOrRepeat(markAndSpace);
-      } else {
-        return this.detectBit(markAndSpace);
-      }
+    if (markAndSpace < 12500) {
+      // Repeat detected
+      return IR_REPEAT;
+    } else if (markAndSpace < 14500) {
+      // Start detected
+      return IR_INCOMPLETE;
+    } else {
+      return IR_INCOMPLETE;
     }
   }
 
@@ -187,7 +124,10 @@ namespace makerbit {
     pins.onPulsed(pin, PulseValue.High, () => {
       // LOW
       space = pins.pulseDuration();
-      control.raiseEvent(MICROBIT_MAKERBIT_IR_MARK_SPACE, mark + space);
+      const command = detectCommand(mark + space);
+      if (command !== IR_INCOMPLETE) {
+        control.raiseEvent(MICROBIT_MAKERBIT_IR_NEC, command);
+      }
     });
   }
 
@@ -208,46 +148,31 @@ namespace makerbit {
     }
 
     irState = {
-      necIr: new NecIr([
-        0x62,
-        0x22,
-        0x02,
-        0xc2,
-        0xa8,
-        0x68,
-        0x98,
-        0xb0,
-        0x30,
-        0x18,
-        0x7a,
-        0x10,
-        0x38,
-        0x5a,
-        0x42,
-        0x4a,
-        0x52,
-      ]),
+      bitsReceived: 0,
+      commandBits: 0,
       command: IrButton.Any,
       hasNewCommand: false,
     };
 
     enableIrMarkSpaceDetection(pin);
 
-    let activeCommand = -1;
+    let activeCommand = IR_INCOMPLETE;
     let repeatTimeout = 0;
     const REPEAT_TIMEOUT_MS = 120;
 
     control.onEvent(
-      MICROBIT_MAKERBIT_IR_MARK_SPACE,
+      MICROBIT_MAKERBIT_IR_NEC,
       EventBusValue.MICROBIT_EVT_ANY,
       () => {
-        const newCommand = irState.necIr.pushMarkSpace(control.eventValue());
+        const necValue = control.eventValue();
 
-        if (newCommand === NecIr.DETECTION_IN_PROGRESS) {
-          // do nothing
-        } else if (newCommand === NecIr.REPEAT) {
+        // Refresh repeat timer
+        if (necValue <= 255 || necValue === IR_REPEAT) {
           repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
-        } else if (newCommand >= 0 && newCommand !== activeCommand) {
+        }
+
+        // Process a new command
+        if (necValue <= 255 && necValue !== activeCommand) {
           if (activeCommand >= 0) {
             control.raiseEvent(
               MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
@@ -255,34 +180,30 @@ namespace makerbit {
             );
           }
 
-          repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
           irState.hasNewCommand = true;
-          irState.command = newCommand;
-          activeCommand = newCommand;
-          control.raiseEvent(
-            MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
-            newCommand
-          );
+          irState.command = necValue;
+          activeCommand = necValue;
+          control.raiseEvent(MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID, necValue);
         }
       }
     );
 
     control.inBackground(() => {
       while (true) {
-        if (activeCommand < 0) {
+        if (activeCommand === IR_INCOMPLETE) {
           // sleep to save CPU cylces
-          basic.pause(REPEAT_TIMEOUT_MS);
+          basic.pause(2 * REPEAT_TIMEOUT_MS);
         } else {
           const now = input.runningTime();
           if (now > repeatTimeout) {
-            // repeat timeout
+            // repeat timed out
             control.raiseEvent(
               MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
               activeCommand
             );
-            activeCommand = -1;
+            activeCommand = IR_INCOMPLETE;
           } else {
-            basic.pause(repeatTimeout - now + 2);
+            basic.pause(REPEAT_TIMEOUT_MS);
           }
         }
       }
