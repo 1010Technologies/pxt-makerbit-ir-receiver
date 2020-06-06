@@ -156,7 +156,7 @@ namespace makerbit {
    */
   //% subcategory="IR Receiver"
   //% blockId="makerbit_infrared_connect_receiver"
-  //% block="connect IR receiver at %pin and listen for %protocol"
+  //% block="connect IR receiver at pin %pin and decode %protocol"
   //% pin.fieldEditor="gridpicker"
   //% pin.fieldOptions.columns=4
   //% pin.fieldOptions.tooltips="false"
