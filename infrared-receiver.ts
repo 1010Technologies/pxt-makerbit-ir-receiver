@@ -53,6 +53,13 @@ const enum IrButtonAction {
   Released = 1,
 }
 
+const enum IrProtocol {
+  //% block="Keyestudio"
+  Keyestudio = 0,
+  //% block="NEC"
+  NEC = 1,
+}
+
 //% color=#0fbc11 icon="\u272a" block="MakerBit"
 //% category="MakerBit"
 namespace makerbit {
@@ -65,6 +72,7 @@ namespace makerbit {
   const IR_INCOMPLETE = 257;
 
   interface IrState {
+    protocol: IrProtocol;
     command: number;
     hasNewCommand: boolean;
     bitsReceived: uint8;
@@ -73,8 +81,18 @@ namespace makerbit {
 
   function pushBit(bit: number): number {
     irState.bitsReceived += 1;
+    if (irState.bitsReceived <= 8) {
+      // ignore all address bits
+      if (irState.protocol === IrProtocol.Keyestudio && bit === 1) {
+        // recover from missing message bits at the beginning
+        // Keyestudio address is 0 and thus missing bits can be easily detected
+        // by checking for the first inverse address bit (which is a 1)
+        irState.bitsReceived = 9;
+      }
+      return IR_INCOMPLETE;
+    }
     if (irState.bitsReceived <= 16) {
-      // ignore all address and inverse address bits
+      // ignore all inverse address bits
       return IR_INCOMPLETE;
     } else if (irState.bitsReceived < 24) {
       irState.commandBits = (irState.commandBits << 1) + bit;
@@ -132,22 +150,27 @@ namespace makerbit {
   }
 
   /**
-   * Connects to the IR receiver module at the specified pin.
+   * Connects to the IR receiver module at the specified pin and configures the IR protocol.
    * @param pin IR receiver pin, eg: DigitalPin.P0
+   * @param protocol IR protocol, eg: IrProtocol.Keyestudio
    */
   //% subcategory="IR Receiver"
   //% blockId="makerbit_infrared_connect_receiver"
-  //% block="connect IR receiver at %pin"
+  //% block="connect IR receiver at %pin and listen for %protocol"
   //% pin.fieldEditor="gridpicker"
   //% pin.fieldOptions.columns=4
   //% pin.fieldOptions.tooltips="false"
   //% weight=90
-  export function connectIrReceiver(pin: DigitalPin): void {
+  export function connectIrReceiver(
+    pin: DigitalPin,
+    protocol: IrProtocol
+  ): void {
     if (irState) {
       return;
     }
 
     irState = {
+      protocol: protocol,
       bitsReceived: 0,
       commandBits: 0,
       command: IrButton.Any,

@@ -18,15 +18,16 @@ http://makerbit.com/
 
 ## makerbit.connectIrReceiver
 
-Connects to the IR receiver module at the specified pin.
+Connects to the IR receiver module at the specified pin and configures the IR protocol.
 
 ```sig
-makerbit.connectIrReceiver(DigitalPin.P0)
+makerbit.connectIrReceiver(DigitalPin.P0, IrProtocol.Keyestudio)
 ```
 
 ### Parameters
 
 - `pin` - digital pin with an attached IR receiver
+- `protocol` - the IR protocol to be detected, for example IrProtocol.Keyestudio or IrProtocol.NEC
 
 ## makerbit.onIrButton
 
@@ -73,7 +74,7 @@ makerbit.irButtonCode(IrButton.Number_9)
 ## MakeCode Example
 
 ```blocks
-makerbit.connectIrReceiver(DigitalPin.P0)
+makerbit.connectIrReceiver(DigitalPin.P0, IrProtocol.Keyestudio)
 
 makerbit.onIrButton(IrButton.Ok, IrButtonAction.Released, function () {
     basic.showIcon(IconNames.SmallHeart)

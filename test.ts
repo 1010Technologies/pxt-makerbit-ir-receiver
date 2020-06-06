@@ -2,7 +2,7 @@
  * IR tests
  */
 
-makerbit.connectIrReceiver(DigitalPin.P0);
+makerbit.connectIrReceiver(DigitalPin.P0, IrProtocol.NEC);
 makerbit.onIrButton(IrButton.Ok, IrButtonAction.Pressed, () => {});
 makerbit.onIrButton(IrButton.Up, IrButtonAction.Released, () => {});
 const wasPressed: boolean = makerbit.wasAnyIrButtonPressed();
