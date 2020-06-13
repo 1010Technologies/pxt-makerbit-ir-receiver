@@ -31,5 +31,5 @@
   "makerbit.wasAnyIrButtonPressed|block": "beliebige IR Taste wurde gedrückt",
   "makerbit|block": "MakerBit",
   "{id:category}Makerbit": "Makerbit",
-  "{id:subcategory}IR Remote": "IR Empfänger"
+  "{id:subcategory}IR Receiver": "IR Empfänger"
 }
