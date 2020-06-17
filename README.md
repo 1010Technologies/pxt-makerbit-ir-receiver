@@ -41,15 +41,7 @@ makerbit.onIrButton(IrButton.Ok, IrButtonAction.Pressed, () => {})
 
 - `button` - the button to be checked
 - `action`- the trigger action
-- `handler` - body code to run when event is raised
-
-## makerbit.wasAnyIrButtonPressed
-
-Returns true if any button was pressed since the last call of this function. False otherwise.
-
-```sig
-makerbit.wasAnyIrButtonPressed();
-```
+- `handler` - body code to run when the event is raised
 
 ## makerbit.irButton
 
@@ -57,6 +49,34 @@ Returns the code of the IR button that was pressed last. Returns -1 (IrButton.An
 
 ```sig
 makerbit.irButton()
+```
+
+## makerbit.onIrDatagram
+
+Do something when a specific button is pressed or released on the remote control.
+
+```sig
+makerbit.onIrDatagram(() => {})
+```
+
+### Parameters
+
+- `handler` - body code to run when the event is raised
+
+## makerbit.irDatagram
+
+Returns the IR datagram as 32-bit hexadecimal string. The last received datagram is returned and "0x00000000" if no data has been received yet.
+
+```sig
+makerbit.irDatagram()
+```
+
+## makerbit.wasIrDataReceived
+
+Returns true if any IR data was received since the last call of this function. False otherwise.
+
+```sig
+makerbit.wasIrDataReceived();
 ```
 
 ## makerbit.irButtonCode

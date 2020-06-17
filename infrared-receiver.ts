@@ -66,53 +66,57 @@ namespace makerbit {
   let irState: IrState;
 
   const MICROBIT_MAKERBIT_IR_NEC = 777;
+  const MICROBIT_MAKERBIT_IR_DATAGRAM = 778;
   const MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID = 789;
   const MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID = 790;
   const IR_REPEAT = 256;
   const IR_INCOMPLETE = 257;
+  const IR_DATAGRAM = 258;
 
   interface IrState {
     protocol: IrProtocol;
-    command: number;
-    hasNewCommand: boolean;
+    hasNewDatagram: boolean;
     bitsReceived: uint8;
-    commandBits: uint8;
+    addressSectionBits: uint16;
+    commandSectionBits: uint16;
+    hiword: uint16;
+    loword: uint16;
   }
 
-  function pushBit(bit: number): number {
+  function appendBitToDatagram(bit: number): number {
     irState.bitsReceived += 1;
+
     if (irState.bitsReceived <= 8) {
-      // ignore all address bits
+      irState.hiword = (irState.hiword << 1) + bit;
       if (irState.protocol === IrProtocol.Keyestudio && bit === 1) {
         // recover from missing message bits at the beginning
-        // Keyestudio address is 0 and thus missing bits can be easily detected
+        // Keyestudio address is 0 and thus missing bits can be detected
         // by checking for the first inverse address bit (which is a 1)
         irState.bitsReceived = 9;
+        irState.hiword = 1;
       }
-      return IR_INCOMPLETE;
+    } else if (irState.bitsReceived <= 16) {
+      irState.hiword = (irState.hiword << 1) + bit;
+    } else if (irState.bitsReceived <= 32) {
+      irState.loword = (irState.loword << 1) + bit;
     }
-    if (irState.bitsReceived <= 16) {
-      // ignore all inverse address bits
-      return IR_INCOMPLETE;
-    } else if (irState.bitsReceived < 24) {
-      irState.commandBits = (irState.commandBits << 1) + bit;
-      return IR_INCOMPLETE;
-    } else if (irState.bitsReceived === 24) {
-      irState.commandBits = (irState.commandBits << 1) + bit;
-      return irState.commandBits & 0xff;
+
+    if (irState.bitsReceived === 32) {
+      irState.addressSectionBits = irState.hiword & 0xffff;
+      irState.commandSectionBits = irState.loword & 0xffff;
+      return IR_DATAGRAM;
     } else {
-      // ignore all inverse command bits
       return IR_INCOMPLETE;
     }
   }
 
-  function detectCommand(markAndSpace: number): number {
+  function decode(markAndSpace: number): number {
     if (markAndSpace < 1600) {
       // low bit
-      return pushBit(0);
+      return appendBitToDatagram(0);
     } else if (markAndSpace < 2700) {
       // high bit
-      return pushBit(1);
+      return appendBitToDatagram(1);
     }
 
     irState.bitsReceived = 0;
@@ -142,9 +146,10 @@ namespace makerbit {
     pins.onPulsed(pin, PulseValue.High, () => {
       // LOW
       space = pins.pulseDuration();
-      const command = detectCommand(mark + space);
-      if (command !== IR_INCOMPLETE) {
-        control.raiseEvent(MICROBIT_MAKERBIT_IR_NEC, command);
+      const status = decode(mark + space);
+
+      if (status !== IR_INCOMPLETE) {
+        control.raiseEvent(MICROBIT_MAKERBIT_IR_NEC, status);
       }
     });
   }
@@ -172,14 +177,16 @@ namespace makerbit {
     irState = {
       protocol: protocol,
       bitsReceived: 0,
-      commandBits: 0,
-      command: IrButton.Any,
-      hasNewCommand: false,
+      hasNewDatagram: false,
+      addressSectionBits: 0,
+      commandSectionBits: 0,
+      hiword: 0, // TODO replace with uint32
+      loword: 0,
     };
 
     enableIrMarkSpaceDetection(pin);
 
-    let activeCommand = IR_INCOMPLETE;
+    let activeCommand = -1;
     let repeatTimeout = 0;
     const REPEAT_TIMEOUT_MS = 120;
 
@@ -187,33 +194,41 @@ namespace makerbit {
       MICROBIT_MAKERBIT_IR_NEC,
       EventBusValue.MICROBIT_EVT_ANY,
       () => {
-        const necValue = control.eventValue();
+        const irEvent = control.eventValue();
 
         // Refresh repeat timer
-        if (necValue <= 255 || necValue === IR_REPEAT) {
+        if (irEvent === IR_DATAGRAM || irEvent === IR_REPEAT) {
           repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
         }
 
-        // Process a new command
-        if (necValue <= 255 && necValue !== activeCommand) {
-          if (activeCommand >= 0) {
+        if (irEvent === IR_DATAGRAM) {
+          irState.hasNewDatagram = true;
+          control.raiseEvent(MICROBIT_MAKERBIT_IR_DATAGRAM, 0);
+
+          const newCommand = irState.commandSectionBits >> 8;
+
+          // Process a new command
+          if (newCommand !== activeCommand) {
+            if (activeCommand >= 0) {
+              control.raiseEvent(
+                MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
+                activeCommand
+              );
+            }
+
+            activeCommand = newCommand;
             control.raiseEvent(
-              MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-              activeCommand
+              MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
+              newCommand
             );
           }
-
-          irState.hasNewCommand = true;
-          irState.command = necValue;
-          activeCommand = necValue;
-          control.raiseEvent(MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID, necValue);
         }
       }
     );
 
     control.inBackground(() => {
       while (true) {
-        if (activeCommand === IR_INCOMPLETE) {
+        if (activeCommand === -1) {
           // sleep to save CPU cylces
           basic.pause(2 * REPEAT_TIMEOUT_MS);
         } else {
@@ -224,7 +239,7 @@ namespace makerbit {
               MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
               activeCommand
             );
-            activeCommand = IR_INCOMPLETE;
+            activeCommand = -1;
           } else {
             basic.pause(REPEAT_TIMEOUT_MS);
           }
@@ -237,7 +252,7 @@ namespace makerbit {
    * Do something when a specific button is pressed or released on the remote control.
    * @param button the button to be checked
    * @param action the trigger action
-   * @param handler body code to run when event is raised
+   * @param handler body code to run when the event is raised
    */
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_on_ir_button
@@ -257,7 +272,6 @@ namespace makerbit {
         : MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
       button === IrButton.Any ? EventBusValue.MICROBIT_EVT_ANY : button,
       () => {
-        irState.command = control.eventValue();
         handler();
       }
     );
@@ -274,22 +288,59 @@ namespace makerbit {
     if (!irState) {
       return IrButton.Any;
     }
-    return irState.command;
+    return irState.commandSectionBits >> 8;
   }
 
   /**
-   * Returns true if any button was pressed since the last call of this function. False otherwise.
+   * Do something when an IR datagram is received.
+   * @param handler body code to run when the event is raised
    */
   //% subcategory="IR Receiver"
-  //% blockId=makerbit_infrared_was_any_button_pressed
-  //% block="any IR button was pressed"
+  //% blockId=makerbit_infrared_on_ir_datagram
+  //% block="on IR datagram received"
+  //% weight=68
+  export function onIrDatagram(handler: () => void) {
+    control.onEvent(
+      MICROBIT_MAKERBIT_IR_DATAGRAM,
+      EventBusValue.MICROBIT_EVT_ANY,
+      () => {
+        handler();
+      }
+    );
+  }
+
+  /**
+   * Returns the IR datagram as 32-bit hexadecimal string.
+   * The last received datagram is returned and "0x00000000" if no data has been received yet.
+   */
+  //% subcategory="IR Receiver"
+  //% blockId=makerbit_infrared_ir_datagram
+  //% block="IR datagram"
+  //% weight=67
+  export function irDatagram(): string {
+    if (!irState) {
+      return "0x00000000";
+    }
+    return (
+      "0x" +
+      ir_rec_to16BitHex(irState.addressSectionBits) +
+      ir_rec_to16BitHex(irState.commandSectionBits)
+    );
+  }
+
+  /**
+   * Returns true if any IR data was received since the last call of this function. False otherwise.
+   */
+  //% subcategory="IR Receiver"
+  //% blockId=makerbit_infrared_was_any_ir_datagram_received
+  //% block="IR data was received"
   //% weight=57
-  export function wasAnyIrButtonPressed(): boolean {
+  export function wasIrDataReceived(): boolean {
     if (!irState) {
       return false;
     }
-    if (irState.hasNewCommand) {
-      irState.hasNewCommand = false;
+    if (irState.hasNewDatagram) {
+      irState.hasNewDatagram = false;
       return true;
     } else {
       return false;
@@ -309,5 +360,19 @@ namespace makerbit {
   //% weight=56
   export function irButtonCode(button: IrButton): number {
     return button as number;
+  }
+
+  function ir_rec_to16BitHex(value: number): string {
+    let hex = "";
+    for (let pos = 0; pos < 4; pos++) {
+      let remainder = value % 16;
+      if (remainder < 10) {
+        hex = remainder.toString() + hex;
+      } else {
+        hex = String.fromCharCode(55 + remainder) + hex;
+      }
+      value = Math.idiv(value, 16);
+    }
+    return hex;
   }
 }

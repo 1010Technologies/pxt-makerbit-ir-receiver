@@ -27,8 +27,10 @@
   "makerbit.connectIrReceiver|block": "verbinde IR Empfänger an Pin %pin und decodiere %protocol",
   "makerbit.irButtonCode|block": "IR Tastencode %button",
   "makerbit.irButton|block": "IR Taste",
+  "makerbit.irDatagram|block": "IR Datagram",
   "makerbit.onIrButton|block": "wenn IR Taste | %button | %action",
-  "makerbit.wasAnyIrButtonPressed|block": "beliebige IR Taste wurde gedrückt",
+  "makerbit.onIrDatagram|block": "wenn IR Datagram empfangen",
+  "makerbit.wasIrDataReceived|block": "IR Daten wurden empfangen",
   "makerbit|block": "MakerBit",
   "{id:category}Makerbit": "Makerbit",
   "{id:subcategory}IR Receiver": "IR Empfänger"
