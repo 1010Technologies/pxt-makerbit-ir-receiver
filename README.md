@@ -65,7 +65,7 @@ makerbit.onIrDatagram(() => {})
 
 ## makerbit.irDatagram
 
-Returns the IR datagram as 32-bit hexadecimal string. The last received datagram is returned and "0x00000000" if no data has been received yet.
+Returns the IR datagram as 32-bit hexadecimal string. The last received datagram is returned or "0x00000000" if no data has been received yet.
 
 ```sig
 makerbit.irDatagram()

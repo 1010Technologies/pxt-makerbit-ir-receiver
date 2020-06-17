@@ -311,7 +311,7 @@ namespace makerbit {
 
   /**
    * Returns the IR datagram as 32-bit hexadecimal string.
-   * The last received datagram is returned and "0x00000000" if no data has been received yet.
+   * The last received datagram is returned or "0x00000000" if no data has been received yet.
    */
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_ir_datagram
