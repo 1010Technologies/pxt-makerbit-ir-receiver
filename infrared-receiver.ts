@@ -260,7 +260,7 @@ namespace makerbit {
   //% button.fieldEditor="gridpicker"
   //% button.fieldOptions.columns=3
   //% button.fieldOptions.tooltips="false"
-  //% weight=69
+  //% weight=50
   export function onIrButton(
     button: IrButton,
     action: IrButtonAction,
@@ -283,7 +283,7 @@ namespace makerbit {
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_ir_button_pressed
   //% block="IR button"
-  //% weight=67
+  //% weight=70
   export function irButton(): number {
     if (!irState) {
       return IrButton.Any;
@@ -298,7 +298,7 @@ namespace makerbit {
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_on_ir_datagram
   //% block="on IR datagram received"
-  //% weight=68
+  //% weight=40
   export function onIrDatagram(handler: () => void) {
     control.onEvent(
       MICROBIT_MAKERBIT_IR_DATAGRAM,
@@ -316,7 +316,7 @@ namespace makerbit {
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_ir_datagram
   //% block="IR datagram"
-  //% weight=67
+  //% weight=30
   export function irDatagram(): string {
     if (!irState) {
       return "0x00000000";
@@ -334,7 +334,7 @@ namespace makerbit {
   //% subcategory="IR Receiver"
   //% blockId=makerbit_infrared_was_any_ir_datagram_received
   //% block="IR data was received"
-  //% weight=57
+  //% weight=80
   export function wasIrDataReceived(): boolean {
     if (!irState) {
       return false;
@@ -357,7 +357,7 @@ namespace makerbit {
   //% button.fieldOptions.columns=3
   //% button.fieldOptions.tooltips="false"
   //% block="IR button code %button"
-  //% weight=56
+  //% weight=60
   export function irButtonCode(button: IrButton): number {
     return button as number;
   }
