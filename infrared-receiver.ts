@@ -285,6 +285,7 @@ namespace makerbit {
   //% block="IR button"
   //% weight=70
   export function irButton(): number {
+    basic.pause(0); // Yield to support background processing when called in tight loops
     if (!irState) {
       return IrButton.Any;
     }
@@ -318,6 +319,7 @@ namespace makerbit {
   //% block="IR datagram"
   //% weight=30
   export function irDatagram(): string {
+    basic.pause(0); // Yield to support background processing when called in tight loops
     if (!irState) {
       return "0x00000000";
     }
@@ -336,6 +338,7 @@ namespace makerbit {
   //% block="IR data was received"
   //% weight=80
   export function wasIrDataReceived(): boolean {
+    basic.pause(0); // Yield to support background processing when called in tight loops
     if (!irState) {
       return false;
     }
@@ -359,6 +362,7 @@ namespace makerbit {
   //% block="IR button code %button"
   //% weight=60
   export function irButtonCode(button: IrButton): number {
+    basic.pause(0); // Yield to support background processing when called in tight loops
     return button as number;
   }
 
