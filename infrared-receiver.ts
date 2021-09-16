@@ -65,13 +65,14 @@ const enum IrProtocol {
 namespace makerbit {
   let irState: IrState;
 
-  const MICROBIT_MAKERBIT_IR_NEC = 777;
   const MICROBIT_MAKERBIT_IR_DATAGRAM = 778;
   const MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID = 789;
   const MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID = 790;
   const IR_REPEAT = 256;
   const IR_INCOMPLETE = 257;
   const IR_DATAGRAM = 258;
+
+  const REPEAT_TIMEOUT_MS = 120;
 
   interface IrState {
     protocol: IrProtocol;
@@ -81,6 +82,8 @@ namespace makerbit {
     commandSectionBits: uint16;
     hiword: uint16;
     loword: uint16;
+    activeCommand: number;
+    repeatTimeout: number;
   }
 
   function appendBitToDatagram(bit: number): number {
@@ -149,9 +152,43 @@ namespace makerbit {
       const status = decode(mark + space);
 
       if (status !== IR_INCOMPLETE) {
-        control.raiseEvent(MICROBIT_MAKERBIT_IR_NEC, status);
+        handleIrMessage(status);
       }
     });
+  }
+
+  function handleIrMessage(status: number) {
+
+    const irEvent = control.eventValue();
+
+    // Refresh repeat timer
+    if (irEvent === IR_DATAGRAM || irEvent === IR_REPEAT) {
+      irState.repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
+    }
+
+    if (irEvent === IR_DATAGRAM) {
+      irState.hasNewDatagram = true;
+      control.raiseEvent(MICROBIT_MAKERBIT_IR_DATAGRAM, 0);
+
+      const newCommand = irState.commandSectionBits >> 8;
+
+      // Process a new command
+      if (newCommand !== irState.activeCommand) {
+        if (irState.activeCommand >= 0) {
+          control.raiseEvent(
+            MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
+            irState.activeCommand
+          );
+        }
+
+        irState.activeCommand = newCommand;
+        control.raiseEvent(
+          MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
+          newCommand
+        );
+
+      }
+    }
   }
 
   /**
@@ -182,64 +219,26 @@ namespace makerbit {
       commandSectionBits: 0,
       hiword: 0, // TODO replace with uint32
       loword: 0,
+      activeCommand: -1,
+      repeatTimeout: 0,
     };
 
     enableIrMarkSpaceDetection(pin);
 
-    let activeCommand = -1;
-    let repeatTimeout = 0;
-    const REPEAT_TIMEOUT_MS = 120;
-
-    control.onEvent(
-      MICROBIT_MAKERBIT_IR_NEC,
-      EventBusValue.MICROBIT_EVT_ANY,
-      () => {
-        const irEvent = control.eventValue();
-
-        // Refresh repeat timer
-        if (irEvent === IR_DATAGRAM || irEvent === IR_REPEAT) {
-          repeatTimeout = input.runningTime() + REPEAT_TIMEOUT_MS;
-        }
-
-        if (irEvent === IR_DATAGRAM) {
-          irState.hasNewDatagram = true;
-          control.raiseEvent(MICROBIT_MAKERBIT_IR_DATAGRAM, 0);
-
-          const newCommand = irState.commandSectionBits >> 8;
-
-          // Process a new command
-          if (newCommand !== activeCommand) {
-            if (activeCommand >= 0) {
-              control.raiseEvent(
-                MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-                activeCommand
-              );
-            }
-
-            activeCommand = newCommand;
-            control.raiseEvent(
-              MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
-              newCommand
-            );
-          }
-        }
-      }
-    );
-
     control.inBackground(() => {
       while (true) {
-        if (activeCommand === -1) {
+        if (irState.activeCommand === -1) {
           // sleep to save CPU cylces
           basic.pause(2 * REPEAT_TIMEOUT_MS);
         } else {
           const now = input.runningTime();
-          if (now > repeatTimeout) {
+          if (now > irState.repeatTimeout) {
             // repeat timed out
             control.raiseEvent(
               MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-              activeCommand
+              irState.activeCommand
             );
-            activeCommand = -1;
+            irState.activeCommand = -1;
           } else {
             basic.pause(REPEAT_TIMEOUT_MS);
           }
