@@ -152,14 +152,12 @@ namespace makerbit {
       const status = decode(mark + space);
 
       if (status !== IR_INCOMPLETE) {
-        handleIrMessage(status);
+        handleIrEvent(status);
       }
     });
   }
 
-  function handleIrMessage(status: number) {
-
-    const irEvent = control.eventValue();
+  function handleIrEvent(irEvent: number) {
 
     // Refresh repeat timer
     if (irEvent === IR_DATAGRAM || irEvent === IR_REPEAT) {
