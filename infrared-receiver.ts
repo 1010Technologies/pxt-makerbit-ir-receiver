@@ -180,7 +180,7 @@ namespace makerbit {
     if (irEvent === IR_DATAGRAM) {
       irState.hasNewDatagram = true;
 
-      if(irState.onIrDatagram) {
+      if (irState.onIrDatagram) {
         background.schedule(irState.onIrDatagram, 0, background.Mode.Once);
       }
 
@@ -190,13 +190,13 @@ namespace makerbit {
       if (newCommand !== irState.activeCommand) {
 
         const pressedHandler = irState.onIrButtonPressed.find(h => h.irButton === newCommand || IrButton.Any === h.irButton);
-        if(pressedHandler) {
+        if (pressedHandler) {
           background.schedule(pressedHandler.onEvent, 0, background.Mode.Once);
         }
 
         if (irState.activeCommand >= 0) {
           const releasedHandler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
-          if(releasedHandler) {
+          if (releasedHandler) {
             background.schedule(releasedHandler.onEvent, 0, background.Mode.Once);
           }
         }
@@ -263,7 +263,7 @@ namespace makerbit {
         // repeat timed out
 
         const handler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
-        if(handler) {
+        if (handler) {
           background.schedule(handler.onEvent, 0, background.Mode.Once);
         }
 
