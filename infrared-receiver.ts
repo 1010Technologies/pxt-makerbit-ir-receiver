@@ -65,9 +65,6 @@ const enum IrProtocol {
 namespace makerbit {
   let irState: IrState;
 
-  const MICROBIT_MAKERBIT_IR_DATAGRAM = 778;
-  const MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID = 789;
-  const MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID = 790;
   const IR_REPEAT = 256;
   const IR_INCOMPLETE = 257;
   const IR_DATAGRAM = 258;
@@ -84,7 +81,23 @@ namespace makerbit {
     loword: uint16;
     activeCommand: number;
     repeatTimeout: number;
+    onIrButtonPressed: IrButtonHandler[];
+    onIrButtonReleased: IrButtonHandler[];
+    onIrDatagram: () => void;
   }
+  class IrButtonHandler {
+    irButton: IrButton;
+    onEvent: () => void;
+
+    constructor(
+      irButton: IrButton,
+      onEvent: () => void
+    ) {
+      this.irButton = irButton;
+      this.onEvent = onEvent;
+    }
+  }
+
 
   function appendBitToDatagram(bit: number): number {
     irState.bitsReceived += 1;
@@ -166,27 +179,52 @@ namespace makerbit {
 
     if (irEvent === IR_DATAGRAM) {
       irState.hasNewDatagram = true;
-      control.raiseEvent(MICROBIT_MAKERBIT_IR_DATAGRAM, 0);
+
+      if(irState.onIrDatagram) {
+        background.schedule(irState.onIrDatagram, 0, background.Mode.Once);
+      }
 
       const newCommand = irState.commandSectionBits >> 8;
 
       // Process a new command
       if (newCommand !== irState.activeCommand) {
+
+        const pressedHandler = irState.onIrButtonPressed.find(h => h.irButton === newCommand || IrButton.Any === h.irButton);
+        if(pressedHandler) {
+          background.schedule(pressedHandler.onEvent, 0, background.Mode.Once);
+        }
+
         if (irState.activeCommand >= 0) {
-          control.raiseEvent(
-            MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-            irState.activeCommand
-          );
+          const releasedHandler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
+          if(releasedHandler) {
+            background.schedule(releasedHandler.onEvent, 0, background.Mode.Once);
+          }
         }
 
         irState.activeCommand = newCommand;
-        control.raiseEvent(
-          MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID,
-          newCommand
-        );
-
       }
     }
+  }
+
+  function initIrState() {
+    if (irState) {
+      return;
+    }
+
+    irState = {
+      protocol: undefined,
+      bitsReceived: 0,
+      hasNewDatagram: false,
+      addressSectionBits: 0,
+      commandSectionBits: 0,
+      hiword: 0, // TODO replace with uint32
+      loword: 0,
+      activeCommand: -1,
+      repeatTimeout: 0,
+      onIrButtonPressed: [],
+      onIrButtonReleased: [],
+      onIrDatagram: undefined,
+    };
   }
 
   /**
@@ -205,44 +243,33 @@ namespace makerbit {
     pin: DigitalPin,
     protocol: IrProtocol
   ): void {
-    if (irState) {
+    if (irState.protocol) {
       return;
     }
 
-    irState = {
-      protocol: protocol,
-      bitsReceived: 0,
-      hasNewDatagram: false,
-      addressSectionBits: 0,
-      commandSectionBits: 0,
-      hiword: 0, // TODO replace with uint32
-      loword: 0,
-      activeCommand: -1,
-      repeatTimeout: 0,
-    };
+    irState.protocol = protocol;
 
     enableIrMarkSpaceDetection(pin);
 
-    control.inBackground(() => {
-      while (true) {
-        if (irState.activeCommand === -1) {
-          // sleep to save CPU cylces
-          basic.pause(2 * REPEAT_TIMEOUT_MS);
-        } else {
-          const now = input.runningTime();
-          if (now > irState.repeatTimeout) {
-            // repeat timed out
-            control.raiseEvent(
-              MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-              irState.activeCommand
-            );
-            irState.activeCommand = -1;
-          } else {
-            basic.pause(REPEAT_TIMEOUT_MS);
-          }
+    background.schedule(notifyIrEvents, REPEAT_TIMEOUT_MS, background.Mode.Repeat);
+  }
+
+  function notifyIrEvents() {
+    if (irState.activeCommand === -1) {
+      // skip to save CPU cylces
+    } else {
+      const now = input.runningTime();
+      if (now > irState.repeatTimeout) {
+        // repeat timed out
+
+        const handler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
+        if(handler) {
+          background.schedule(handler.onEvent, 0, background.Mode.Once);
         }
+
+        irState.activeCommand = -1;
       }
-    });
+    }
   }
 
   /**
@@ -263,15 +290,13 @@ namespace makerbit {
     action: IrButtonAction,
     handler: () => void
   ) {
-    control.onEvent(
-      action === IrButtonAction.Pressed
-        ? MICROBIT_MAKERBIT_IR_BUTTON_PRESSED_ID
-        : MICROBIT_MAKERBIT_IR_BUTTON_RELEASED_ID,
-      button === IrButton.Any ? EventBusValue.MICROBIT_EVT_ANY : button,
-      () => {
-        handler();
-      }
-    );
+    initIrState();
+    if (action === IrButtonAction.Pressed) {
+      irState.onIrButtonPressed.push(new IrButtonHandler(button, handler));
+    }
+    else {
+      irState.onIrButtonReleased.push(new IrButtonHandler(button, handler));
+    }
   }
 
   /**
@@ -298,13 +323,8 @@ namespace makerbit {
   //% block="on IR datagram received"
   //% weight=40
   export function onIrDatagram(handler: () => void) {
-    control.onEvent(
-      MICROBIT_MAKERBIT_IR_DATAGRAM,
-      EventBusValue.MICROBIT_EVT_ANY,
-      () => {
-        handler();
-      }
-    );
+    initIrState();
+    irState.onIrDatagram = handler;
   }
 
   /**
@@ -317,9 +337,7 @@ namespace makerbit {
   //% weight=30
   export function irDatagram(): string {
     basic.pause(0); // Yield to support background processing when called in tight loops
-    if (!irState) {
-      return "0x00000000";
-    }
+    initIrState();
     return (
       "0x" +
       ir_rec_to16BitHex(irState.addressSectionBits) +
@@ -336,9 +354,7 @@ namespace makerbit {
   //% weight=80
   export function wasIrDataReceived(): boolean {
     basic.pause(0); // Yield to support background processing when called in tight loops
-    if (!irState) {
-      return false;
-    }
+    initIrState();
     if (irState.hasNewDatagram) {
       irState.hasNewDatagram = false;
       return true;

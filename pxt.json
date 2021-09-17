@@ -4,7 +4,8 @@
     "description": "MakeCode extension for Keyestudio Infrared Wireless Module Kit",
     "license": "MIT",
     "dependencies": {
-        "core": "*"
+        "core": "*",
+        "background": "github:1010Technologies/pxt-makerbit-background#v0.0.7"
     },
     "files": [
         "README.md",
