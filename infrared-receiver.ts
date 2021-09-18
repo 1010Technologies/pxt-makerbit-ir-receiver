@@ -189,16 +189,16 @@ namespace makerbit {
       // Process a new command
       if (newCommand !== irState.activeCommand) {
 
-        const pressedHandler = irState.onIrButtonPressed.find(h => h.irButton === newCommand || IrButton.Any === h.irButton);
-        if (pressedHandler) {
-          background.schedule(pressedHandler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
-        }
-
         if (irState.activeCommand >= 0) {
           const releasedHandler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
           if (releasedHandler) {
             background.schedule(releasedHandler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
           }
+        }
+
+        const pressedHandler = irState.onIrButtonPressed.find(h => h.irButton === newCommand || IrButton.Any === h.irButton);
+        if (pressedHandler) {
+          background.schedule(pressedHandler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
         }
 
         irState.activeCommand = newCommand;
