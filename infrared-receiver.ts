@@ -181,7 +181,7 @@ namespace makerbit {
       irState.hasNewDatagram = true;
 
       if (irState.onIrDatagram) {
-        background.schedule(irState.onIrDatagram, 0, background.Mode.Once);
+        background.schedule(irState.onIrDatagram, background.Thread.UserCallback, background.Mode.Once, 0);
       }
 
       const newCommand = irState.commandSectionBits >> 8;
@@ -191,13 +191,13 @@ namespace makerbit {
 
         const pressedHandler = irState.onIrButtonPressed.find(h => h.irButton === newCommand || IrButton.Any === h.irButton);
         if (pressedHandler) {
-          background.schedule(pressedHandler.onEvent, 0, background.Mode.Once);
+          background.schedule(pressedHandler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
         }
 
         if (irState.activeCommand >= 0) {
           const releasedHandler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
           if (releasedHandler) {
-            background.schedule(releasedHandler.onEvent, 0, background.Mode.Once);
+            background.schedule(releasedHandler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
           }
         }
 
@@ -251,7 +251,7 @@ namespace makerbit {
 
     enableIrMarkSpaceDetection(pin);
 
-    background.schedule(notifyIrEvents, REPEAT_TIMEOUT_MS, background.Mode.Repeat);
+    background.schedule(notifyIrEvents, background.Thread.Priority, background.Mode.Repeat, REPEAT_TIMEOUT_MS);
   }
 
   function notifyIrEvents() {
@@ -264,7 +264,7 @@ namespace makerbit {
 
         const handler = irState.onIrButtonReleased.find(h => h.irButton === irState.activeCommand || IrButton.Any === h.irButton);
         if (handler) {
-          background.schedule(handler.onEvent, 0, background.Mode.Once);
+          background.schedule(handler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
         }
 
         irState.activeCommand = -1;
