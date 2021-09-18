@@ -243,6 +243,8 @@ namespace makerbit {
     pin: DigitalPin,
     protocol: IrProtocol
   ): void {
+    initIrState();
+
     if (irState.protocol) {
       return;
     }
