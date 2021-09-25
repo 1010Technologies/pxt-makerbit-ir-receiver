@@ -269,6 +269,7 @@ namespace makerbit {
           background.schedule(handler.onEvent, background.Thread.UserCallback, background.Mode.Once, 0);
         }
 
+        irState.bitsReceived = 0;
         irState.activeCommand = -1;
       }
     }
